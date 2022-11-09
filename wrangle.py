@@ -46,7 +46,25 @@ def get_zillow():
 
     #dropped very small and unrealistic square feet
     df = df[df.calculatedfinishedsquarefeet > 100]
-    
+
+    df.rename(columns={
+        'bedroomcnt':'bedrooms',
+        'bathroomcnt':'bathrooms',
+        'calculatedfinishedsquarefeet':'sq_feet',
+        'taxvaluedollarcnt':'tax_value',
+        'taxamount':'tax_amount',
+        'yearbuilt':'year_built'
+    }, inplace=True)
+
+    #change the type of bedrooms to integer
+    df.loc[:, 'bedrooms'] = df.loc[:, 'bedrooms'].astype('uint8')
+
+    # remove outliers
+    df = df[df.sq_feet < 15_000]
+    df = df[df.bedrooms <= 10]
+    df = df[df.bathrooms <= 10]
+    df = df[df.tax_value <= df.tax_value.quantile(0.75)]
+ 
     return df 
 
 def split_zillow(df):
@@ -71,7 +89,12 @@ def scale_zillow(train, validate, test):
     '''
     #count_columns = ['bedroomcnt', 'bathroomcnt']
     
-    col = train.columns[1:-1]
+    #col = train.columns[1:-1]
+    col = ['bedrooms',
+        'bathrooms',
+        'sq_feet',
+        'year_built',
+        'tax_amount']
     
     # create scalers
     #min_max_scaler = MinMaxScaler()    
@@ -81,4 +104,12 @@ def scale_zillow(train, validate, test):
     validate[col] = qt.transform(validate[col])
     test[col] = qt.transform(test[col])
     
+    return train, validate, test
+
+def split_df(df):
+        #split_db class verision with random seed
+    train_validate, test = train_test_split(df, test_size=0.2, 
+                                            random_state=seed)
+    train, validate = train_test_split(train_validate, test_size=0.3, 
+                                       random_state=seed)
     return train, validate, test
